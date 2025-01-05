@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Your Personal Daily Schedule</title>
+    <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-auth.js"></script>
+    <style>
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #F8F1E9;
+            margin: 0;
+            padding: 0;
+        }
+        #header {
+            background: #202024;
+            height: 100px;
+            text-align: center;
+            color: white;
+            padding-top: 20px;
+        }
+        #localTime {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ffffff;
+            color: #333333;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        #nextTaskTimer {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            background: #ffffff;
+            color: #333333;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        #taskEndTimer {
+            position: absolute;
+            top: 90px;
+            right: 10px;
+            background: #ffffff;
+            color: #333333;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+        #mainwrapper {
+            display: flex;
+            padding: 20px;
+        }
+        #content {
+            flex: 3;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-right: 20px;
+        }
+        #content h1 {
+            color: #202024;
+        }
+        #rightmenu {
+            flex: 1;
+            background: #14517B;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        #tasks {
+            list-style: none;
+            padding: 0;
+        }
+        #tasks li {
+            background: #6A8A73;
+            color: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #tasks li .star {
+            cursor: pointer;
+            color: #14517B;
+            font-size: 18px;
+        }
+        #favorites {
+            list-style: none;
+            padding: 0;
+        }
+        #favorites li {
+            background: #6A8A73;
+            color: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #favorites li .remove {
+            cursor: pointer;
+            color: #14517B;
+            font-size: 18px;
+            margin-left: 10px;
+        }
+        #timeModal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #6A8A73;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+            z-index: 1000;
+        }
+        #timeModal select {
+            margin: 5px;
+            padding: 5px;
+        }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <header id="header">
+        <h1>Daily Schedule</h1>
+        <div id="localTime"></div>
+        <div id="nextTaskTimer">Time till next task: N/A</div>
+        <div id="taskEndTimer">Time till task ends: N/A</div>
+    </header>
+
+    <div id="mainwrapper">
+        <div id="content">
+            <h1>Add Task</h1>
+            <p>Tasks</p>
+            <form id="taskForm">
+                <input type="text" id="taskName" placeholder="Task Name" required style="margin-bottom: 10px; width: 98%; padding: 8px;">
+                <input type="time" id="taskTime" required style="margin-bottom: 10px; width: 98%; padding: 8px;">
+                <input type="number" id="taskDuration" placeholder="Duration (minutes)" required style="margin-bottom: 10px; width: 98%; padding: 8px;">
+                <button type="submit" style="width: 100%; padding: 10px; background-color: #14517B; color: #D3BDA9; border: none; border-radius: 5px;">Add Task</button>
+             </form>
+            <ul id="tasks"></ul>
+        </div>
+
+        <div id="rightmenu">
+            <h3>Favorites</h3>
+            <ul id="favorites"></ul>
+        </div>
+    </div>
+
+    <div id="overlay"></div>
+    <div id="timeModal">
+        <p>Enter Time</p>
+        <label for="hours">Hour:</label>
+        <select id="hours">
+            ${Array.from({ length: 24 }, (_, i) => `<option value="${i}">${String(i).padStart(2, '0')}</option>`).join('')}
+        </select>
+        <label for="minutes">Minute:</label>
+        <select id="minutes">
+            ${Array.from({ length: 60 }, (_, i) => `<option value="${i}">${String(i).padStart(2, '0')}</option>`).join('')}
+        </select>
+        <button id="confirmTime">Confirm</button>
+    </div>
+
+    <script>
+        const taskForm = document.getElementById('taskForm');
+        const tasks = document.getElementById('tasks');
+        const favorites = document.getElementById('favorites');
+        const localTime = document.getElementById('localTime');
+        const nextTaskTimer = document.getElementById('nextTaskTimer');
+        const taskEndTimer = document.getElementById('taskEndTimer');
+        const overlay = document.getElementById('overlay');
+        const timeModal = document.getElementById('timeModal');
+        const confirmTime = document.getElementById('confirmTime');
+        const hours = document.getElementById('hours');
+        const minutes = document.getElementById('minutes');
+
+        let draggedTask = null;
+        let activeTaskEnd = null;
+
+        setInterval(() => {
+            const now = new Date();
+            localTime.textContent = now.toLocaleString();
+            updateNextTaskTimer(now);
+        }, 1000);
+
+        taskForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const taskName = document.getElementById('taskName').value;
+            const taskTime = document.getElementById('taskTime').value;
+            const taskDuration = document.getElementById('taskDuration').value;
+
+            addTask(taskName, taskTime, taskDuration);
+            taskForm.reset();
+        });
+
+        function addTask(name, time, duration) {
+            const li = document.createElement('li');
+            li.draggable = true;
+            li.innerHTML = `${time} - ${name} (${duration} mins) <span class="star">&#9734;</span>`;
+
+            const star = li.querySelector('.star');
+            star.addEventListener('click', () => {
+                if (star.textContent === '★') {
+                    removeFavorite(name, duration);
+                    star.textContent = '☆';
+                } else {
+                    addFavorite(name, duration);
+                    star.textContent = '★';
+                }
+            });
+
+            tasks.appendChild(li);
+            sortTasks();
+
+            li.addEventListener('dragstart', (e) => {
+                draggedTask = { name, duration };
+                e.dataTransfer.setData('text/plain', JSON.stringify(draggedTask));
+            });
+        }
+
+        function addFavorite(name, duration) {
+            const li = document.createElement('li');
+            li.draggable = true;
+            li.innerHTML = `${name} (${duration} mins) <span class="remove">&#x2715;</span>`;
+
+            const removeButton = li.querySelector('.remove');
+            removeButton.addEventListener('click', () => {
+                removeFavorite(name, duration);
+            });
+
+            li.addEventListener('dragstart', (e) => {
+                draggedTask = { name, duration };
+                e.dataTransfer.setData('text/plain', JSON.stringify(draggedTask));
+            });
+
+            favorites.appendChild(li);
+        }
+
+        function removeFavorite(name, duration) {
+            const favoriteItems = Array.from(favorites.children);
+            favoriteItems.forEach(item => {
+                if (item.textContent.includes(`${name} (${duration} mins)`)) {
+                    favorites.removeChild(item);
+                }
+            });
+
+            const taskItems = Array.from(tasks.children);
+            taskItems.forEach(task => {
+                if (task.textContent.includes(name)) {
+                    task.querySelector('.star').textContent = '☆';
+                }
+            });
+        }
+
+        function sortTasks() {
+    const taskItems = Array.from(tasks.children);
+    taskItems.sort((a, b) => {
+        const timeA = a.textContent.split(' - ')[0];
+        const timeB = b.textContent.split(' - ')[0];
+        return timeA.localeCompare(timeB);
+    });
+
+    tasks.innerHTML = '';
+    taskItems.forEach(item => tasks.appendChild(item));
+}
+
+function updateNextTaskTimer(now) {
+    const taskItems = Array.from(tasks.children);
+    let nextTask = null;
+
+    for (const task of taskItems) {
+        const [taskTime] = task.textContent.split(' - ');
+        const [hours, minutes] = taskTime.split(':').map(Number);
+        const taskDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+
+        if (taskDate > now) {
+            nextTask = taskDate;
+            break;
+        }
+    }
+
+    if (nextTask) {
+        const timeDiff = Math.ceil((nextTask - now) / 1000);
+        nextTaskTimer.textContent = `Time till next task: ${formatTime(timeDiff)}`;
+    } else {
+        nextTaskTimer.textContent = 'Time till next task: N/A';
+    }
+
+    if (activeTaskEnd && now >= activeTaskEnd) {
+        activeTaskEnd = null;
+        taskEndTimer.style.display = 'none';
+        alert('Task has ended!');
+    }
+}
+
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+favorites.addEventListener('dragover', (e) => {
+    e.preventDefault();
+});
+
+favorites.addEventListener('drop', (e) => {
+    e.preventDefault();
+    handleTaskDrop();
+});
+
+tasks.addEventListener('dragover', (e) => {
+    e.preventDefault();
+});
+
+tasks.addEventListener('drop', (e) => {
+    e.preventDefault();
+    handleTaskDrop();
+});
+
+function handleTaskDrop() {
+    if (draggedTask) {
+        const taskName = draggedTask.name;
+        const taskDuration = draggedTask.duration;
+
+        // Prompt the user to enter time
+        const hour = prompt('Enter the hour (0-23):');
+        const minute = prompt('Enter the minute (0-59):');
+
+        // Validate hour and minute inputs
+        if (isNaN(hour) || isNaN(minute)) {
+            alert('Please enter valid numbers for hour and minute.');
+            return;
+        }
+
+        const parsedHour = parseInt(hour);
+        const parsedMinute = parseInt(minute);
+
+        if (parsedHour < 0 || parsedHour > 23) {
+            alert('Hour must be between 0 and 23.');
+            return;
+        }
+
+        if (parsedMinute < 0 || parsedMinute > 59) {
+            alert('Minute must be between 0 and 59.');
+            return;
+        }
+
+        const taskTime = `${String(parsedHour).padStart(2, '0')}:${String(parsedMinute).padStart(2, '0')}`;
+        addTask(taskName, taskTime, taskDuration);
+        draggedTask = null;
+    }
+}
+
+</script>
+</body>
+</html>
+           
+
