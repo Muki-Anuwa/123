@@ -339,11 +339,9 @@ function handleTaskDrop() {
         const taskName = draggedTask.name;
         const taskDuration = draggedTask.duration;
 
-        // Prompt the user to enter time
         const hour = prompt('Enter the hour (0-23):');
         const minute = prompt('Enter the minute (0-59):');
 
-        // Validate hour and minute inputs
         if (isNaN(hour) || isNaN(minute)) {
             alert('Please enter valid numbers for hour and minute.');
             return;

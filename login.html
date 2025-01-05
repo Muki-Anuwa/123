@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-auth.js"></script>
+
+  <script>
+    var firebaseConfig = {
+        apiKey: "AIzaSyCzsgiZ0dvAGlqeFj93rvqLperB1zVZ_TM",
+  authDomain: "my-personal-schedule-1588c.firebaseapp.com",
+  projectId: "my-personal-schedule-1588c",
+  storageBucket: "my-personal-schedule-1588c.firebasestorage.app",
+  messagingSenderId: "785626498385",
+  appId: "1:785626498385:web:aa4667db652ae56a66bf70"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+
+  <script>
+    function checkAuthState() {
+      firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+          window.location.href = "test.html";
+        } else {
+
+        }
+      });
+    }
+
+    function login() {
+      var email = document.getElementById("email").value;
+      var password = document.getElementById("password").value;
+
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then(function() {
+          window.location.href = "test.html";
+        })
+        .catch(function(error) {
+          var errorCode = error.code;
+          var errorMessage = error.message;
+          console.log("Login error:", errorCode, errorMessage);
+        });
+    }
+  </script>
+</head>
+<body onload="checkAuthState()">
+	<div>
+  <h1>Login</h1>
+  <form>
+    <label for="email">Email:</label>
+    <input type="email" id="email" required><br><br>
+    <label for="password">Password:</label>
+    <input type="password" id="password" required><br><br>
+    <button type="button" onclick="login()">Login</button>
+  </form>
+  <p>Doesn't have an account? <a href="ThisPageDoesNothingYet.html">Signup</a></p>
+</body>
+</html>
+
+
+

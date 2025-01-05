@@ -1,0 +1,41 @@
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Sign Up</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+        <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+   
+
+
+  </head>
+  <body>
+    <div class="login-container">
+      <h2>Sign Up</h2>
+      <form id="signup-form">
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit">Sign Up</button>
+      </form>
+      <p>Already have an account? <a href="login.html">Login</a></p>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyCzsgiZ0dvAGlqeFj93rvqLperB1zVZ_TM",
+        authDomain: "my-personal-schedule-1588c.firebaseapp.com",
+        projectId: "my-personal-schedule-1588c",
+        storageBucket: "my-personal-schedule-1588c.firebaseapp.com",
+        messagingSenderId: "785626498385",
+        appId: "1:785626498385:web:aa4667db652ae56a66bf70",
+        measurementId: "G-M0ZGTHF2K8"
+      };
+      const app = firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+    </script>
+    <script src="signup.js"></script>
+  </body>
+  </html>
